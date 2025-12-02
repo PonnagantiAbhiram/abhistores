@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Abhi Store — Precious Books</title>
+  <style>
+    :root{--bg:#0f1724;--card:#0b1220;--accent:#10b981;--muted:#94a3b8;}
+    body{font-family:Inter,system-ui,Segoe UI,Roboto,Arial;background:#071725;color:#e8f3ff;margin:0;padding:32px;}
+    .container{max-width:980px;margin:0 auto}
+    h1{margin:0 0 6px 0;font-size:30px;font-weight:700}
+    .small{color:var(--muted);font-size:14px}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:25px}
+    .card{background:var(--card);padding:22px;border-radius:14px;box-shadow:0 6px 22px rgba(2,6,23,0.6)}
+    .price{font-size:22px;color:var(--accent);font-weight:700;margin-top:12px}
+    .btn{background:linear-gradient(90deg,var(--accent),#059669);border:none;color:#042022;padding:12px 16px;border-radius:10px;font-weight:600;cursor:pointer}
+    .download{background:transparent;border:1px solid #2b3946;color:#94e6c2;padding:10px 14px;border-radius:8px;cursor:not-allowed}
+    .download.enabled{border-color:var(--accent);color:var(--accent);cursor:pointer}
+    footer{margin-top:30px;color:var(--muted);font-size:13px}
+    .modal{position:fixed;inset:0;background:rgba(2,6,23,0.75);display:none;align-items:center;justify-content:center;z-index:20}
+    .box{background:#0c1a2c;padding:18px;border-radius:12px;width:420px;max-width:94%}
+    input{width:100%;padding:10px;border-radius:8px;border:1px solid #223241;background:#041628;color:#d7eefe}
+    img.qr{width:220px;border-radius:10px;margin:10px auto;display:block}
+    .note{font-size:13px;color:var(--muted);margin-top:10px}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Abhi Store — Exclusive Books</h1>
+    <div class="small">Only two premium digital books available. Scan the QR and paste the transaction ID to unlock the download.</div>
+
+    <div class="grid">
+      <div class="card">
+        <img src="download (1).jpeg" alt="Data Science Book Cover" style="width:50%;border-radius:10px;margin-bottom:10px">
+        <h2>Data Science Interview Handbook</h2>
+        <div class="small">⭐ 4.6 / 5 · 300 Reviews</div>
+        <div class="price">₹499</div>
+        <div style="margin-top:15px;display:flex;gap:10px">
+          <button class="btn" onclick="startBuy('bookA',499,'Data Science Interview Handbook')">Buy Now (Scan QR)</button>
+          <button id="dl-bookA" class="download" title="Locked until purchase">Download PDF</button>
+        </div>
+        <div class="note">Book file: <code>books/Data_Science_Interview_Questions_and_Answers_1705830305.pdf</code></div>">Book file: <code>books/Data_Science_Interview_Questions_and_Answers_1705830305.pdf</code></div>
+      </div>
+
+      <div class="card">
+        <img src="download.jpeg" alt="SQL Book Cover" style="width:50%;border-radius:10px;margin-bottom:10px">
+        <h2>SQL Programming Language</h2>
+        <div class="small">⭐ 4.6 / 5 · 300 Reviews</div>
+        <div class="price">₹799</div>
+        <div style="margin-top:15px;display:flex;gap:10px">
+          <button class="btn" onclick="startBuy('bookB',799,'SQL Programming Language')">Buy Now (Scan QR)</button>
+          <button id="dl-bookB" class="download" title="Locked until purchase">Download PDF</button>
+        </div>
+        <div class="note">Book file: <code>books/SQL_Basics_Advanced_Notes_1705914074.pdf</code></div>">(Upload the PDF for Book B at <code>books/SQL_Basics_Advanced_Notes_1705914074.pdf</code>)</div>
+      </div>
+    </div>
+
+    <footer>Payments via QR. QR image file must be placed as <code>qr.jpeg</code> next to this HTML file.</footer>
+  </div>
+
+  <!-- Modal: show QR + txn input -->
+  <div id="modal" class="modal" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="box" style="text-align:center">
+      <h3 id="modalTitle">Pay with QR</h3>
+      <p class="small">Scan this QR code with PhonePe / GPay / Paytm and pay the shown amount.</p>
+
+      <!-- The QR image file (qr.jpeg) must be in the same folder as this HTML -->
+      <img class="qr" id="qrImg" src="qr.jpeg" alt="Payment QR Code (PhonePe)">
+
+      <p id="amountLine" class="small" style="margin-top:8px"></p>
+
+      <p class="small" style="margin-top:8px">After payment, paste the UPI transaction/reference ID here:</p>
+      <input id="txn" placeholder="Enter UPI Transaction / Reference ID">
+
+      <div style="margin-top:14px;display:flex;gap:10px;justify-content:center">
+        <button class="btn" onclick="confirmTxn()">Confirm Payment</button>
+        <button onclick="closeModal()" style="background:#1a2d40;color:#9ab5c3;border:none;padding:10px 14px;border-radius:8px">Cancel</button>
+      </div>
+
+      <p class="note">Note: This site does <strong>not</strong> automatically verify payments. The transaction ID is saved locally to unlock the download. For production, integrate a payment gateway or server-side verification.</p>
+    </div>
+  </div>
+
+  <script>
+    // Simple client-only flow: show QR, collect txn id, unlock local download
+    const PRODUCTS = {
+      bookA: { file: 'books/Data_Science_Interview_Questions_and_Answers_1705830305.pdf', price: 499 },
+      bookB: { file: 'books/lanterns_of_thought.pdf', price: 799 }
+    };
+
+    function startBuy(key, amount, title) {
+      // store pending purchase
+      sessionStorage.setItem('pending', JSON.stringify({ key, amount, title }));
+
+      // update modal text
+      document.getElementById('modalTitle').innerText = `Pay ₹${amount} for ${title}`;
+      document.getElementById('amountLine').innerText = `Amount: ₹${amount}`;
+
+      // show modal
+      const modal = document.getElementById('modal');
+      modal.style.display = 'flex';
+      modal.setAttribute('aria-hidden', 'false');
+
+      // focus txn input after short delay
+      setTimeout(() => document.getElementById('txn').focus(), 400);
+    }
+
+    function closeModal() {
+      const modal = document.getElementById('modal');
+      modal.style.display = 'none';
+      modal.setAttribute('aria-hidden', 'true');
+      document.getElementById('txn').value = '';
+    }
+
+    function confirmTxn() {
+      const txn = document.getElementById('txn').value.trim();
+
+      // === SIMPLE VALIDATION (Option A) ===
+      // Must be 12–20 characters, alphanumeric only
+      const validFormat = /^[A-Za-z0-9]{12,20}$/;
+
+      if (!validFormat.test(txn)) {
+        alert('❌ Invalid Transaction ID. It must be 12–20 characters and contain only letters and numbers.');
+        return;
+      }
+
+      const pending = JSON.parse(sessionStorage.getItem('pending') || 'null');
+      if (!pending) {
+        alert('No pending purchase found. Please click Buy again.');
+        return;
+      }
+
+      sessionStorage.setItem('paid_' + pending.key, JSON.stringify({ txn, time: new Date().toISOString(), amount: pending.amount }));
+      unlock(pending.key);
+      closeModal();
+      alert('✔ Payment recorded locally. Download is now unlocked.');
+    }
+
+    function unlock(key) {
+      sessionStorage.setItem('paid_' + pending.key, JSON.stringify({ txn, time: new Date().toISOString(), amount: pending.amount }));
+      unlock(pending.key);
+      closeModal();
+      alert('Thanks — payment recorded locally and download is unlocked.');
+    }
+
+    function unlock(key) {
+      const btn = document.getElementById('dl-' + key);
+      if (!btn) return;
+      btn.classList.add('enabled');
+      btn.title = 'Click to download';
+      btn.onclick = () => {
+        const p = PRODUCTS[key];
+        // open file in new tab (ensure files are hosted correctly)
+        window.open(p.file, '_blank');
+      };
+    }
+
+    // on load, enable downloads that were paid this session
+    window.addEventListener('DOMContentLoaded', () => {
+      Object.keys(PRODUCTS).forEach(k => {
+        if (sessionStorage.getItem('paid_' + k)) unlock(k);
+      });
+    });
+  </script>
+</body>
+</html>
